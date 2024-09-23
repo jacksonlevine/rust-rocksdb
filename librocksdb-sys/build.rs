@@ -6,10 +6,19 @@ fn link(name: &str, bundled: bool) {
     let target = var("TARGET").unwrap();
     let target: Vec<_> = target.split('-').collect();
     if target.get(2) == Some(&"windows") {
-        println!("cargo:rustc-link-lib=dylib={name}");
+
+        if name != "rpcrt4" && name != "shlwapi" {
+            println!("cargo:rustc-link-lib=static={name}");
+        } else {
+            println!("cargo:rustc-link-lib=dylib={name}");
+        }
+        
+
         if bundled && target.get(3) == Some(&"gnu") {
+
             let dir = var("CARGO_MANIFEST_DIR").unwrap();
             println!("cargo:rustc-link-search=native={}/{}", dir, target[0]);
+
         }
     }
 }
@@ -314,10 +323,7 @@ fn try_to_find_and_link_lib(lib_name: &str) -> bool {
 
     if let Ok(lib_dir) = env::var(format!("{lib_name}_LIB_DIR")) {
         println!("cargo:rustc-link-search=native={lib_dir}");
-        let mode = match env::var_os(format!("{lib_name}_STATIC")) {
-            Some(_) => "static",
-            None => "dylib",
-        };
+        let mode = "static";
         println!("cargo:rustc-link-lib={}={}", mode, lib_name.to_lowercase());
         return true;
     }
@@ -361,6 +367,7 @@ fn main() {
     bindgen_rocksdb();
     let target = env::var("TARGET").unwrap();
 
+    
     if !try_to_find_and_link_lib("ROCKSDB") {
         // rocksdb only works with the prebuilt rocksdb system lib on freebsd.
         // we dont need to rebuild rocksdb
