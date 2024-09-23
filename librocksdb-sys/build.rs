@@ -55,12 +55,17 @@ fn bindgen_rocksdb() {
 }
 
 fn build_rocksdb() {
+
+    println!("cargo:rustc-link-lib=asan"); 
     let target = env::var("TARGET").unwrap();
 
     let mut config = cc::Build::new();
     config.include("rocksdb/include/");
     config.include("rocksdb/");
     config.include("rocksdb/third-party/gtest-1.8.1/fused-src/");
+
+    config.flag("-fsanitize=address");
+    config.flag("-fno-omit-frame-pointer");
 
     if cfg!(feature = "snappy") {
         config.define("SNAPPY", Some("1"));
@@ -118,6 +123,8 @@ fn build_rocksdb() {
         // only available since Intel Nehalem (about 2010) and AMD Bulldozer
         // (about 2011).
         let target_features: Vec<_> = target_feature_value.split(',').collect();
+
+
 
         if target_features.contains(&"sse2") {
             config.flag_if_supported("-msse2");
@@ -327,6 +334,7 @@ fn try_to_find_and_link_lib(lib_name: &str) -> bool {
         println!("cargo:rustc-link-lib={}={}", mode, lib_name.to_lowercase());
         return true;
     }
+
     false
 }
 
@@ -367,6 +375,7 @@ fn main() {
     bindgen_rocksdb();
     let target = env::var("TARGET").unwrap();
 
+    println!("cargo:rerun-if-changed=build.rs");
     
     if !try_to_find_and_link_lib("ROCKSDB") {
         // rocksdb only works with the prebuilt rocksdb system lib on freebsd.
